@@ -88,6 +88,10 @@ commandlist = ["",""]
 
 def submitadhoccommand(command):
     global commandlist
+    print(command)
+    if not (command.startswith('+')):
+        print ("command did not start with +")
+        return "Error"
     if polling == "True":
         commandlist.append(command)
         r = "PendingPoll:" + ",".join(commandlist)
@@ -108,7 +112,7 @@ def pollingevent():
             r = sendcommandtocomport(x)
             procescommandresult(x, r)
          else:
-             print ("bad command '" + str(x) + "'")
+             print ("found bad command in que:'" + str(x) + "'")
      commandlist.clear()
      labelCommands.configure(text="", width=5)
      rr = ""
@@ -171,11 +175,15 @@ def sendcommandtocomport(command):
             return "Error"
         try:
             ComPort.write_timeout = 1
-            print("testing with timeout of 1 and cmd+ " )
-            testcommand = "Test"
+            print("testing with timeout of 1 and bad command of test" )
+            testcommand = "test"
             ComPort.write(testcommand.encode())
             print ("Setting write_timeout to 0")
-            ComPort.write_timeout = 0
+            ComPort.timeout=2
+            ComPort.write_timeout=0
+            testresult = ComPort.readline()
+            print("Test Result was '" + str(testresult) + "'")
+            print("Success!")
             canvas.draw()
         except Exception as e:
             polling = "False"
@@ -191,9 +199,9 @@ def sendcommandtocomport(command):
             return "Error"
     ComPort.flushInput()  # flush input buffer, discarding all its contents
     ComPort.flushOutput()  # flush output buffer, aborting current output
-    # print("sending:" + str(command.encode()))
+    #print("sending:" + str(command.encode()))
     retry = 0
-    ComPort.timeout = 2
+    ComPort.timeout = 5
     result = ""
     labelcomport.config(bg="darkblue")
     canvas.draw()
@@ -232,8 +240,12 @@ def sendcommandtocomport(command):
         #print("A_result: " + resultstr)
         if not (resultstr.startswith(commandtrim)):
             print("Mismatch cmd in return. Looking for cmd '" + str(commandtrim) + "' Retry #:" + str(retry))
-            print(resultstr)
+            print("Command was:'" + command + "'")
+            print("Result was:'" + resultstr + "'")
             time.sleep(.1)
+            ComPort.flushInput()  # flush input buffer, discarding all its contents
+            ComPort.flushOutput()  # flush output buffer, aborting current output
+
             retry = retry + 1
         else:
             resultstr = resultstr.replace(commandtrim, '', 1)
@@ -248,6 +260,8 @@ def procescommandresult(command,result):
     global test_endsetpoint
     global setpoints
     global testingstate
+    #print (str(command))
+    #print (str(result))
     if result == "Error":
         return ""
     commandtrim = command
@@ -347,7 +361,7 @@ def procescommandresult(command,result):
             linesetpoint.set_xdata(xsetpoint)
             linesetpoint.set_ydata(ysetpoint)
             if i < (len(profile) - 1):
-                print (str(i) + " of " + str(len(profile)))
+                #print (str(i) + " of " + str(len(profile)))
                 xyNext = profile[i + 1].split(":")
                 dtime = float(xyNext[1]) - int(xy[1])
                 dtemp = float(xyNext[2]) - int(xy[2])
@@ -373,6 +387,7 @@ def procescommandresult(command,result):
         canvas.draw()
         return "OK"
     if commandtrim == GET_ACTIVERUN:
+        #print ("in active run")
         if result == "testing":
             activerun = "0.00:58!0.50:100!1.00:150!2.00:305!4.00:400!5.00:420".split("!")
         else:
@@ -387,16 +402,21 @@ def procescommandresult(command,result):
         ytempA.clear()
         canvas.draw()
         if (len(activerun) > 1 ):
-            print("GetActiveRunA")
-            print(result)
+            #print("GetActiveRunA")
+            #print(result)
             for i in range(0, len(activerun)):
-                print("  GetActiveRunB" + str(i) + " " + str(activerun[i]))
-                xy = activerun[i].split(":")
-                ytempA.append(float(xy[1]))
-                xtempA.append(float(xy[0]))
-                linetempA.set_xdata(xtempA)
-                linetempA.set_ydata(ytempA)
+                #print("  GetActiveRunB" + str(i) + " " + str(activerun[i]))
+                if str(activerun[i]).find(":") > 0:
+                    xy = activerun[i].split(":")
+                    ytempA.append(float(xy[1]))
+                    xtempA.append(float(xy[0]))
+                    linetempA.set_xdata(xtempA)
+                    linetempA.set_ydata(ytempA)
+                else:
+                    print("skipping active run value  .. missing a :")
             fig.canvas.draw()
+        else:
+            print("active data not splitabled by !")
         return "OK"
     return "OK"
 
