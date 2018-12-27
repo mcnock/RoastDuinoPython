@@ -695,11 +695,11 @@ labelcomport.place(relx=.00, y=20)
 
 labelState = tk.Label(application_window ,text="Stopped", font="Arial 10", width=50,height = 1,justify="left",anchor="nw")
 labelState.place(relx=.07, rely=(lblHO + (lblH * 1)))
-labelStats = tk.Label(application_window, text="   ", font="Arial 10", width=50,height = 1,justify="left",anchor="nw")
+labelStats = tk.Label(application_window, text="   ", font="Arial 10", width=45,height = 1,justify="left",anchor="nw")
 labelStats.place(relx=.07, rely=(lblHO + (lblH * 2)))
-labelCurrentTemp = tk.Label(application_window, text="000 F", font="Arial 10", width=15,height = 1,justify="left",anchor="nw")
-labelCurrentTemp.place(relx=.6, rely=(lblHO + (lblH * 3)))
-labelCommands = tk.Label(application_window, text="Stopped", font="Arial 10", width=20,height = 1,justify="left",anchor="nw")
+labelCurrentTemp = tk.Label(application_window, text="000 F", font="Arial 10", width=20,height = 1,justify="left",anchor="nw")
+labelCurrentTemp.place(relx=.07, rely=(lblHO + (lblH * 3)))
+labelCommands = tk.Label(application_window, text="Stopped", font="Arial 10", width=15,height = 1,justify="left",anchor="nw")
 labelCommands.place(relx=.07, rely=(lblHO + (lblH * 4)))
 
 
