@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import serial
 from serial.tools.list_ports_windows import comports
 import time
+import datetime
 import random
 from tkinter import messagebox
 import tkinter as tk
@@ -42,6 +43,9 @@ ACTION_D_GAIN = "+DG"
 
 
 ComPort = serial.Serial()
+
+LastRunningTemp = 100
+LastRunningMinutes = 12.1
 
 currenttemptime = 0
 
@@ -307,8 +311,11 @@ def procescommandresult(command,result):
         labelStats.config(text=detailsmsg)
         msgEnd = "End sp:" + str(endsetpoint) + " Temp:" + str(endtemp()) + "F or " + str(endminutes()) + " minutes"
         labelEndPoint.config(text=msgEnd)
-        labelCurrentTemp.config(text=int(parts[4]))
         PlaceSetPointAnnotation()
+        if parts[0] == "Running":
+            LastRunningTemp = int(parts[3])
+            LastRunningMinutes = float(parts[2])
+            labelCurrentTemp.config(text="Run Time:" + str(parts[3]) + " Temp:" + str(parts[2]))
         if parts[0] != "Stopped":
             ytemp1.append(int(parts[4]))
             xtemp1.append(float(parts[2]))
@@ -605,7 +612,18 @@ class ButtonClickAction(object):
         command = simpledialog.askstring("Enter command", "example +GA", parent=application_window)
         r = sendcommandtocomport(command)
         messagebox.showinfo("",r)
+    def Save (self, event):
+        self.ind += 1
+        bean = simpledialog.askstring("Bean Name", "Bean name", parent=application_window)
+        t = datetime.datetime.now()
+        line = str(bean) + "," + str(t.month) + "-" + str(t.day) + "-" + str(t.year) + "," + str(t.hour) + ":" + str(t.minute) + "," + str(LastRunningMinutes) + "," + str(LastRunningTemp) + "," + str(endsetpoint)
 
+        for sp in setpoints:
+            line = line + "," + str(sp[0]) + ":" + str(sp[1]) + ":" + str(sp[2])
+
+        print(line)
+        with open("roasthistory.csv", "a") as myfile:
+            myfile.write(line + '\n')
 
 
 
@@ -679,14 +697,14 @@ labelState = tk.Label(application_window ,text="Stopped", font="Arial 10", width
 labelState.place(relx=.07, rely=(lblHO + (lblH * 1)))
 labelStats = tk.Label(application_window, text="   ", font="Arial 10", width=50,height = 1,justify="left",anchor="nw")
 labelStats.place(relx=.07, rely=(lblHO + (lblH * 2)))
+labelCurrentTemp = tk.Label(application_window, text="000 F", font="Arial 10", width=15,height = 1,justify="left",anchor="nw")
+labelCurrentTemp.place(relx=.6, rely=(lblHO + (lblH * 3)))
 labelCommands = tk.Label(application_window, text="Stopped", font="Arial 10", width=20,height = 1,justify="left",anchor="nw")
-labelCommands.place(relx=.07, rely=(lblHO + (lblH * 3)))
+labelCommands.place(relx=.07, rely=(lblHO + (lblH * 4)))
 
 
 labelEndPoint = tk.Label(application_window, text="   ", font="Arial 10", width=30,height = 1,justify="left",anchor="nw")
 labelEndPoint.place(relx=.6, rely=(lblHO + (lblH * 1)))
-labelCurrentTemp = tk.Label(application_window, text="000 F", font="Arial 10", width=15,height = 1,justify="left",anchor="nw")
-labelCurrentTemp.place(relx=.6, rely=(lblHO + (lblH * 2)))
 
 
 fig.tight_layout(rect=(0,.00,1,.9))
@@ -722,7 +740,9 @@ End4or5_button.on_clicked(callback.End4or5)
 testcommand_button = Button(fig.add_axes([hboffset + (hbwidth * 11), 1-hbheight, hbwidthT, hbheight]), 'cmd')
 testcommand_button.on_clicked(callback.TestCom)
 Icommand_button = Button(fig.add_axes([hboffset + (hbwidth * 12), 1-hbheight, hbwidthT, hbheight]), '+-Int')
-Icommand_button.on_clicked(callback.Integral)
+Icommand_button.on_clicked(callback.Save)
+Save_button = Button(fig.add_axes([hboffset + (hbwidth * 13), 1-hbheight, hbwidthT, hbheight]), 'Save')
+Save_button.on_clicked(callback.Save)
 
 
 
