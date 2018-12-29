@@ -313,6 +313,12 @@ def procescommandresult(command,result):
             End4or5_button.label.set_text("End@4")
         else:
             End4or5_button.label.set_text("End@5")
+
+        if (float(parts[12]) > 1):
+            parts[12] = 1.0
+        if (float(parts[12]) < 0):
+            parts[12] = 0.0
+
         statemsg = "State:" + str(parts[0]) + " sp:" + str(parts[1]) + " Roast Time:" + str(parts[2]) +  "  Remaining:"  + \
                    str("{0:.2f}".format(float(endminutes()) - float(parts[2])))
         labelState.config(text=statemsg)
@@ -327,7 +333,7 @@ def procescommandresult(command,result):
             labelCurrentTemp.config(text="Run Time:" + str(parts[2]) + " Temp:" + str(parts[3]))
         if parts[0] != "Stopped":
             yduty.append(float(parts[12]))
-            print (float(parts[12]))
+            #print (float(parts[12]))
             xduty.append(float(parts[2]))
             ytemp1.append(int(parts[4]))
             xtemp1.append(float(parts[2]))
@@ -680,7 +686,7 @@ minorLocator = AutoMinorLocator(4)
 axGraph.yaxis.set_minor_locator(minorLocator)
 
 axGraph2 = axGraph.twinx()
-axGraph2.set_ylim(-.2, 5)
+axGraph2.set_ylim(-.5, 5)
 
 lineprofile, = axGraph.plot(xprofile, yprofile, 'r-',linewidth=2.00)
 linetemp2, = axGraph.plot(xtemp2, ytemp2, 'c-', linewidth=.5)
@@ -689,7 +695,7 @@ linetemp, = axGraph.plot(xtemp, ytemp, 'b-', linewidth=1.25)
 linetempA, = axGraph.plot(xtempA, ytempA, 'y-', linewidth=1.25)
 linesetpoint, = axGraph.plot(xsetpoint, ysetpoint, 'ro')
 annotateendpoint = axGraph.annotate(xy=(6, 400), s="SP:500", fontsize='8')
-lineduty, = axGraph2.plot(xduty, yduty, 'g-', linewidth=0.5)
+lineduty, = axGraph2.plot(xduty, yduty, 'g-', linewidth=1.0)
 axGraph2.axhline(y=0, linewidth=1, linestyle='--', color='g')
 axGraph2.axhline(y=0.5, linewidth=1, linestyle='--', color='g')
 axGraph2.axhline(y=1, linewidth=1, linestyle='--', color='g')
@@ -701,6 +707,7 @@ canvas = FigureCanvasTkAgg(fig, master=application_window)
 canvas.draw()
 canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 labels = [item.get_text() for item in axGraph2.get_yticklabels()]
+
 for i in range(3, len(labels)):
     labels[i] = ''
 
