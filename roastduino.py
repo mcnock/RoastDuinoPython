@@ -30,6 +30,8 @@ ACTION_CLEAR_IS = "+AC "
 ACTION_REFRESH = "+AR "
 ACTION_TOGGLE_ROAST = "+AT "
 
+testmode = "False"
+#testmode = "True"
 #These are partial commands...an integer needs to be appended to the end
 ACTION_I_ALL = "+IA"
 ACTION_D_ALL = "+DA"
@@ -152,7 +154,8 @@ class pollingTimer:
 def sendcommandtocomport(command):
     global polling
     global ComPort
-    #return "testing"
+    if testmode == "True":
+        return "testing"
     if not ComPort.isOpen():
         try:
             #iterator = sorted(comports())
@@ -686,7 +689,7 @@ linetemp, = axGraph.plot(xtemp, ytemp, 'b-', linewidth=1.25)
 linetempA, = axGraph.plot(xtempA, ytempA, 'y-', linewidth=1.25)
 linesetpoint, = axGraph.plot(xsetpoint, ysetpoint, 'ro')
 annotateendpoint = axGraph.annotate(xy=(6, 400), s="SP:500", fontsize='8')
-lineduty, = axGraph2.plot(xduty, yduty, 'g--', linewidth=0.5)
+lineduty, = axGraph2.plot(xduty, yduty, 'g-', linewidth=0.5)
 axGraph2.axhline(y=0, linewidth=1, linestyle='--', color='g')
 axGraph2.axhline(y=0.5, linewidth=1, linestyle='--', color='g')
 axGraph2.axhline(y=1, linewidth=1, linestyle='--', color='g')
