@@ -15,6 +15,7 @@ from matplotlib.widgets import Button
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import AutoMinorLocator
+
 from matplotlib.ticker import FormatStrFormatter
 
 #commands need to be 4 characters with  first character of +
@@ -127,6 +128,7 @@ class pollingTimer:
     def start(self, timerlabel):
         # variable storing time
         global polling
+        global ComPort
         self.count = 0
         self.label = timerlabel
         polling = "True"
@@ -144,7 +146,9 @@ class pollingTimer:
         else:
             self.label.configure(text=(str(self.count)))
             self.label.configure(bg="pink")
-
+            Poll_button.label.set_text("Connect")
+            ComPort.close()
+            canvas.draw()
 def sendcommandtocomport(command):
     global polling
     global ComPort
@@ -273,15 +277,16 @@ def procescommandresult(command,result):
     #print (command)
     #print (result)
     if commandtrim == GET_REALTIME:
-        if result == "testtime":
+        if result == "testing":
             print ("creating dummy data")
-            result = "Running:index:Time:Avg:T1:T2:5:6:7:8:9"
+            result = "Running:index:Time:Avg:T1:T2:5:6:7:8:9:9:9"
             #state,endsetpoint,Roastinutes,tbeanrolling,mean,tbean1,tbean2,cfan,cheat1,cheat2
             parts = str(result).split(":")
-            parts[0] = testingstate
+            parts[0] = "Roasting" #testingstate
             if parts[0] != "Stopped":
                 currenttemptime = currenttemptime + 1
                 if currenttemptime > 300:
+                    print ("dummy stop")
                     parts[0] = "Stopped"
             parts[1] = test_endsetpoint
             parts[2] = currenttemptime / 10
@@ -291,8 +296,9 @@ def procescommandresult(command,result):
             parts[6] = "2.1"
             parts[7] = "1.0"
             parts[8] = "8.0"
+            parts[12] = float(random.randint(1,10))/10
         elif result == "testing":
-            parts = "Stopped: 5 :0.00: 56.60:59: 51:-1: 0.33:0.88: 0.99:0: 0:0.00".split(":")
+            parts = "Stopped: 5 :0.00: 56.60:59: 51:-1: 0.33:0.88: 0.99:0: 0:0.00:0".split(":")
         else:
             parts = str(result).split(":")
         if len(parts) < 12:
@@ -312,13 +318,18 @@ def procescommandresult(command,result):
         msgEnd = "End sp:" + str(endsetpoint) + " Temp:" + str(endtemp()) + "F or " + str(endminutes()) + " minutes"
         labelEndPoint.config(text=msgEnd)
         PlaceSetPointAnnotation()
-        if parts[0] == "Running":
-            LastRunningTemp = int(parts[3])
+        if parts[0] == "Roasting":
+            LastRunningTemp = float(parts[3])
             LastRunningMinutes = float(parts[2])
-            labelCurrentTemp.config(text="Run Time:" + str(parts[3]) + " Temp:" + str(parts[2]))
+            labelCurrentTemp.config(text="Run Time:" + str(parts[2]) + " Temp:" + str(parts[3]))
         if parts[0] != "Stopped":
+            yduty.append(float(parts[12]))
+            print (float(parts[12]))
+            xduty.append(float(parts[2]))
             ytemp1.append(int(parts[4]))
             xtemp1.append(float(parts[2]))
+            lineduty.set_xdata(xduty)
+            lineduty.set_ydata(yduty)
             linetemp1.set_xdata(xtemp1)
             linetemp1.set_ydata(ytemp1)
             ytemp2.append(int(parts[5]))
@@ -330,9 +341,7 @@ def procescommandresult(command,result):
             linetemp.set_xdata(xtemp)
             linetemp.set_ydata(ytemp)
         fig.canvas.draw()
-    if (commandtrim == GET_PROFILE or
-          commandtrim.startswith("+I") or
-          commandtrim.startswith("+D")):
+    if (commandtrim == GET_PROFILE or commandtrim.startswith("+I") or commandtrim.startswith("+D")):
         global lineprofile
         if result == "testing":
             result = "0: 0:150!1: 3:380!2: 5:413!3: 13:433!4: 14:458!5: 16:461"
@@ -345,6 +354,7 @@ def procescommandresult(command,result):
             print(str(len(profile)))
             return "Error"
         #lineprofile.remove()
+
         xprofile.clear()
         yprofile.clear()
         xsetpoint.clear()
@@ -396,11 +406,15 @@ def procescommandresult(command,result):
     if commandtrim == GET_ACTIVERUN:
         #print ("in active run")
         if result == "testing":
-            activerun = "0.00:58!0.50:100!1.00:150!2.00:305!4.00:400!5.00:420".split("!")
+            #activerun = "0.00:58!0.50:100!1.00:150!2.00:305!4.00:400!5.00:420".split("!")
+            activerun = "".split("!")
+            currenttemptime = 0
         else:
             activerun = result.split("!")
-        ytempA.clear()
-        xtempA.clear()
+        yduty.clear()
+        xduty.clear()
+        ytemp.clear()
+        xtemp.clear()
         xtemp1.clear()
         ytemp1.clear()
         xtemp2.clear()
@@ -475,7 +489,6 @@ class ButtonClickAction(object):
             print ("turning off polling")
             global polling
             polling = 'False'
-            Poll_button.label.set_text("Connect")
         canvas.draw()
         return
     def start(self, event):
@@ -517,7 +530,6 @@ class ButtonClickAction(object):
             action = ACTION_I_TIME + setpoint
 
         submitadhoccommand(action)
-
     def Integral (self, event):
         self.ind += 1
 
@@ -529,7 +541,6 @@ class ButtonClickAction(object):
             action = ACTION_I + "I" + str(intchange)
 
         submitadhoccommand(action)
-
     def ACTION_ALL_ROOT (self, event):
         self.ind += 1
 
@@ -541,7 +552,6 @@ class ButtonClickAction(object):
             action = ACTION_I + "A" + str(tempchange)
 
         submitadhoccommand(action)
-
     def ACTION_One_Root (self, event):
         self.ind += 1
 
@@ -558,7 +568,6 @@ class ButtonClickAction(object):
             action = ACTION_I + setpoint + str(tempchange)
 
         submitadhoccommand(action)
-
     def End4or5(self,event):
         self.ind += 1
         global test_endsetpoint
@@ -600,16 +609,15 @@ class ButtonClickAction(object):
             annotateendpoint.set_y(float(setpoints[endsetpoint][2]) + zoomhoroffset)
 
         canvas.draw()
-
     def ComPort (self, event):
         self.ind += 1
         comport = simpledialog.askstring("Enter Comport", "example COM6", parent=application_window)
         if comport != "":
             COMPORT_button.label.set_text(comport)
         canvas.draw()
-    def TestCom (self, event):
+    def AnyCmd (self, event):
         self.ind += 1
-        command = simpledialog.askstring("Enter command", "example +GA", parent=application_window)
+        command = simpledialog.askstring("Enter command", "+[I,D][I,G,S][1-9]\nRR", parent=application_window)
         r = sendcommandtocomport(command)
         messagebox.showinfo("",r)
     def Save (self, event):
@@ -646,6 +654,9 @@ ytemp2 = []
 xtempA = []
 ytempA = []
 
+xduty = []
+yduty = []
+
 xsetpoint = []
 ysetpoint = []
 xsetpointT = []
@@ -661,27 +672,44 @@ axGraph.grid(which='minor', alpha=1.0, linestyle='-', linewidth='0.3', color='gr
 axGraph.tick_params(axis='y', which='minor', labelsize='x-small')
 axGraph.yaxis.set_minor_formatter(FormatStrFormatter("%.0f"))
 
+
 minorLocator = AutoMinorLocator(4)
 axGraph.yaxis.set_minor_locator(minorLocator)
 
-lineprofile, = axGraph.plot(xprofile, yprofile, 'r-',linewidth=2.00)
+axGraph2 = axGraph.twinx()
+axGraph2.set_ylim(-.2, 5)
 
-linetemp2, = axGraph.plot(xtemp2, ytemp2, 'c-', linewidth=.8)
-linetemp1, = axGraph.plot(xtemp1, ytemp1, 'm-', linewidth=.8)
+lineprofile, = axGraph.plot(xprofile, yprofile, 'r-',linewidth=2.00)
+linetemp2, = axGraph.plot(xtemp2, ytemp2, 'c-', linewidth=.5)
+linetemp1, = axGraph.plot(xtemp1, ytemp1, 'm-', linewidth=.5)
 linetemp, = axGraph.plot(xtemp, ytemp, 'b-', linewidth=1.25)
 linetempA, = axGraph.plot(xtempA, ytempA, 'y-', linewidth=1.25)
-
-
 linesetpoint, = axGraph.plot(xsetpoint, ysetpoint, 'ro')
 annotateendpoint = axGraph.annotate(xy=(6, 400), s="SP:500", fontsize='8')
+lineduty, = axGraph2.plot(xduty, yduty, 'g--', linewidth=0.5)
+axGraph2.axhline(y=0, linewidth=1, linestyle='--', color='g')
+axGraph2.axhline(y=0.5, linewidth=1, linestyle='--', color='g')
+axGraph2.axhline(y=1, linewidth=1, linestyle='--', color='g')
+
 #annotateendpoint.set_bbox(dict(facecolor = 'white', alpha=0.6,edgecolor='white'))
 #annotateendpoint.set_bbox(dict(facecolor='red', alpha=0.5, edgecolor='red'))
 
 canvas = FigureCanvasTkAgg(fig, master=application_window)
 canvas.draw()
 canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+labels = [item.get_text() for item in axGraph2.get_yticklabels()]
+for i in range(3, len(labels)):
+    labels[i] = ''
 
 
+axGraph2.set_yticklabels(labels)
+for ticklabel in axGraph2.get_yticklabels():
+    print (ticklabel.get_text())
+    ticklabel.set_text('A')
+
+#label = axGraph2.yaxis.get_major_ticks()[2].label
+#label.set_text('A')
+#canvas.draw()
 lblHO = .02
 lblH = .04
 
@@ -738,10 +766,8 @@ T_button.on_clicked(callback.ACTION_TIME_Root)
 End4or5_button = Button(fig.add_axes([hboffset + (hbwidth * 10), 1-hbheight, hbwidthT, hbheight]), 'End@5', color='aqua')
 End4or5_button.on_clicked(callback.End4or5)
 testcommand_button = Button(fig.add_axes([hboffset + (hbwidth * 11), 1-hbheight, hbwidthT, hbheight]), 'cmd')
-testcommand_button.on_clicked(callback.TestCom)
-Icommand_button = Button(fig.add_axes([hboffset + (hbwidth * 12), 1-hbheight, hbwidthT, hbheight]), '+-Int')
-Icommand_button.on_clicked(callback.Save)
-Save_button = Button(fig.add_axes([hboffset + (hbwidth * 13), 1-hbheight, hbwidthT, hbheight]), 'Save')
+testcommand_button.on_clicked(callback.AnyCmd)
+Save_button = Button(fig.add_axes([hboffset + (hbwidth * 12), 1-hbheight, hbwidthT, hbheight]), 'Save')
 Save_button.on_clicked(callback.Save)
 
 
