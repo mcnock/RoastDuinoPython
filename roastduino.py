@@ -79,12 +79,10 @@ def PlaceSetPointAnnotation():
     annotateendpoint.set_y(float(setpoints[endsetpoint][2]) + int(zoomhoroffset))
     annotateendpoint.set_text(str(setpoints[endsetpoint][2]) + "@" + str(setpoints[endsetpoint][0]))
 
-
 testingstate = "Stopped"
 endsetpoint = 4
 test_endsetpoint = 4
 setpoints = [[0, 2, 100], [1, 5, 300], [2, 6, 400], [3, 10, 450], [4, 12, 500], [5, 17, 550]]
-
 zoomhoroffset = 10
 application_window = tk.Tk()
 application_window.wm_title("RoastDuino")
@@ -151,6 +149,7 @@ class pollingTimer:
             Poll_button.label.set_text("Connect")
             ComPort.close()
             canvas.draw()
+
 def sendcommandtocomport(command):
     global polling
     global ComPort
@@ -216,7 +215,7 @@ def sendcommandtocomport(command):
     result = ""
     labelcomport.config(bg="darkblue")
     canvas.draw()
-    while retry <= 3:
+    while retry <= 1:
         #print("A_sending:'" + str(command) + "'")
         try:
             ComPort.write(command.encode())
