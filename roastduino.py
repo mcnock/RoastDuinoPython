@@ -30,7 +30,7 @@ ACTION_CLEAR_IS = "+AC "
 ACTION_REFRESH = "+AR "
 ACTION_TOGGLE_ROAST = "+AT "
 
-testmode = "False"
+testmode = "True"
 #testmode = "True"
 #These are partial commands...an integer needs to be appended to the end
 ACTION_I_ALL = "+IA"
@@ -44,7 +44,7 @@ ACTION_D_INTEGRAL = "+DI"
 ACTION_I_GAIN = "+IG"
 ACTION_D_GAIN = "+DG"
 
-
+LogFileName = datetime.datetime.now().strftime('log_%Y_%m_%d') + ".log"
 ComPort = serial.Serial()
 
 LastRunningTemp = 100
@@ -74,6 +74,12 @@ def firsttemp():
     print(str(setpoints[1][2] + setpoints[2][2]))
     return int(int(setpoints[1][2]) + int(setpoints[1][2]))/2
 
+def Log(line):
+    with open(LogFileName, "a") as myfile:
+        ts = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        myfile.write(ts + " " + str(line) + '\n')
+
+
 def PlaceSetPointAnnotation():
     annotateendpoint.set_x(float(setpoints[endsetpoint][1]) - .5)
     annotateendpoint.set_y(float(setpoints[endsetpoint][2]) + int(zoomhoroffset))
@@ -89,7 +95,7 @@ application_window.wm_title("RoastDuino")
 laststate = "unk"
 polling = "False"
 commandlist = ["",""]
-
+commandlist.clear()
 
 def submitadhoccommand(command):
     global commandlist
@@ -98,11 +104,13 @@ def submitadhoccommand(command):
         print ("command did not start with +")
         return "Error"
     if polling == "True":
+        Log("Add command to polling list:" + str(command))
         commandlist.append(command)
         r = "PendingPoll:" + ",".join(commandlist)
         labelCommands.configure(text=r, width=len(r))
     else:
         msg = "Pending:" + command
+        Log("Submit non polling command:" + str(command))
         labelCommands.configure(text=msg, width=len(msg))
         rrr = ""
         rrr = sendcommandtocomport(command)
@@ -112,6 +120,7 @@ def pollingevent():
      global commandlist
 
      for x in commandlist:
+         Log("Submit polling list command:" + str(x))
          if (str(x)).startswith("+"):
             print ("doing command in list:" + str(x))
             r = sendcommandtocomport(x)
@@ -121,6 +130,7 @@ def pollingevent():
      commandlist.clear()
      labelCommands.configure(text="", width=5)
      rr = ""
+     Log("Submit polling command:" + str(GET_REALTIME))
      rr = sendcommandtocomport(GET_REALTIME)
      procescommandresult(GET_REALTIME, rr)
 
@@ -138,16 +148,17 @@ class pollingTimer:
 
     def refresh_label(self):
         self.count += 1
+        Log("poll event fired")
         pollingevent()
         global polling
         if polling == 'True':
             self.label.configure(text=(str(self.count)))
+            Log("Set next poll event")
             self.label.after(2000, self.refresh_label)
         else:
             self.label.configure(text=(str(self.count)))
             self.label.configure(bg="pink")
             Poll_button.label.set_text("Connect")
-            ComPort.close()
             canvas.draw()
 
 def sendcommandtocomport(command):
@@ -173,31 +184,33 @@ def sendcommandtocomport(command):
                 messagebox.showinfo("Err opening comport ", "No comport entered")
                 polling = "False"
                 return "Error"
-            print("opening  port " + comportname)
+            Log("opening  port " + comportname)
             ComPort = serial.Serial(comportname)  # open COM24
             ComPort.baudrate = 9600  # set Baud rate to 9600
             ComPort.bytesize = 8  # Number of data bits = 8
             ComPort.parity = 'N'  # No parity
         except Exception as e:
             polling = "False"
+            Log("Err opening " + str(comportname) + " Error was:" + str(e))
             messagebox.showinfo("Err opening " + str(comportname), "Error was:" + str(e))
             ComPort.close()
             return "Error"
         try:
             ComPort.write_timeout = 1
-            print("testing with timeout of 1 and bad command of test" )
+            Log("Write known bad command:'test'" )
             testcommand = "test"
             ComPort.write(testcommand.encode())
-            print ("Setting write_timeout to 0")
-            ComPort.timeout=2
+            ComPort.timeout = 1
             ComPort.write_timeout=0
             testresult = ComPort.readline()
-            print("Test Result was '" + str(testresult) + "'")
+            Log("Recieved:'" + str(testresult) + "'")
             print("Success!")
             canvas.draw()
         except Exception as e:
             polling = "False"
+            Log("Err sending test msg to " + comportname + " Error was:" + str(e))
             messagebox.showinfo("Err sending msg to " + comportname, "Error was:" + str(e))
+
             ComPort.close()
             return "Error"
 
@@ -209,24 +222,24 @@ def sendcommandtocomport(command):
             return "Error"
     ComPort.flushInput()  # flush input buffer, discarding all its contents
     ComPort.flushOutput()  # flush output buffer, aborting current output
-    #print("sending:" + str(command.encode()))
     retry = 0
     ComPort.timeout = 5
     result = ""
     labelcomport.config(bg="darkblue")
     canvas.draw()
     while retry <= 1:
-        #print("A_sending:'" + str(command) + "'")
+        Log("Write:'" + str(command) + "'")
         try:
             ComPort.write(command.encode())
         except Exception as e:
             polling = "False"
-            messagebox.showerror("Err sending data to comport", str(e))
+            Log("Err sending data to comport. Error was:" + str(e))
+            messagebox.showerror("Err sending data to comport", "Error was:" + str(e))
             return "Error"
         commandtrim = command.replace("+", "").replace(" ","")
         #print("Call read line")
         result = ComPort.readline()
-        #print (str(result))
+        Log("Received:" + str(result))
         #time.sleep(.5)  # give the serial port sometime to receive the data
         #result = ""
         # bwaitmore = 0
@@ -271,8 +284,9 @@ def procescommandresult(command,result):
     global setpoints
     global testingstate
     #print (str(command))
-    #print (str(result))
+    Log("Processing result:" + str(result))
     if result == "Error":
+        log("Error result")
         return ""
     commandtrim = command
     #print ("Processcommandresult")
@@ -304,8 +318,7 @@ def procescommandresult(command,result):
         else:
             parts = str(result).split(":")
         if len(parts) < 12:
-            print("Incomplete GET_REALTIME")
-            print(str(len(parts)))
+            log("Incomplete " + GET_REALTIME + " Should be 12. Was:" + str(len(parts)))
             return "Error"
         endsetpoint = int(parts[1])
         if str(parts[1]) == str(5):
@@ -357,9 +370,9 @@ def procescommandresult(command,result):
             return "OK";
         profile = result.split("!")
         if len(profile) != 6:
-            print (str(result))
-            print("Incomplete GET_PROFILE")
-            print(str(len(profile)))
+
+            log("Incomplete " + GET_PROFILE + " Should be 6.  Was:" + str(len(profile)))
+
             return "Error"
         #lineprofile.remove()
 
@@ -445,7 +458,7 @@ def procescommandresult(command,result):
                     print("skipping active run value  .. missing a :")
             fig.canvas.draw()
         else:
-            print("active data not splitabled by !")
+            Log("Incorrect " + GET_ACTIVERUN + " Did not contain any '!'")
         return "OK"
     return "OK"
 
@@ -643,7 +656,9 @@ class ButtonClickAction(object):
 
 
 
-
+print ("Logfilename:" + LogFileName)
+Log("   ")
+Log("*******************************STARTUP******************************************")
 plt.ion()
 axis_color = 'black'
 # fig = plt.figure()
