@@ -31,6 +31,7 @@ ACTION_REFRESH = "+AR "
 ACTION_TOGGLE_ROAST = "+AT "
 
 testmode = "True"
+logconsole = "True"
 #testmode = "True"
 #These are partial commands...an integer needs to be appended to the end
 ACTION_I_ALL = "+IA"
@@ -77,7 +78,10 @@ def firsttemp():
 def Log(line):
     with open(LogFileName, "a") as myfile:
         ts = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        if (logconsole == "True"):
+            print(ts + " " + str(line))
         myfile.write(ts + " " + str(line) + '\n')
+
 
 
 def PlaceSetPointAnnotation():
@@ -161,6 +165,26 @@ class pollingTimer:
             Poll_button.label.set_text("Connect")
             canvas.draw()
 
+def pollingFalse():
+    global polling
+    if polling == "True":
+        polling = "False"
+        Log(" Stopping polling")
+
+def closecomport():
+    global ComPort
+    r = ""
+    try:
+        if ComPort.isOpen():
+            r = "closing open comport"
+            ComPort.close()
+        else:
+            r = "ComPort not open"
+    except Exception as e:
+        r = "Error closing comport . Error was:" + str(e)
+    Log(str(r))
+    return r
+
 def sendcommandtocomport(command):
     global polling
     global ComPort
@@ -181,8 +205,8 @@ def sendcommandtocomport(command):
             portcsv = "COM5"
             comportname = simpledialog.askstring("Enter Comport from list", portcsv, parent=application_window)
             if comportname == "":
-                messagebox.showinfo("Err opening comport ", "No comport entered")
-                polling = "False"
+                messagebox.showinfo(" Err opening comport ", "No comport entered")
+                pollingFalse()
                 return "Error"
             Log("opening  port " + comportname)
             ComPort = serial.Serial(comportname)  # open COM24
@@ -190,7 +214,7 @@ def sendcommandtocomport(command):
             ComPort.bytesize = 8  # Number of data bits = 8
             ComPort.parity = 'N'  # No parity
         except Exception as e:
-            polling = "False"
+            pollingFalse()
             Log("Err opening " + str(comportname) + " Error was:" + str(e))
             messagebox.showinfo("Err opening " + str(comportname), "Error was:" + str(e))
             ComPort.close()
@@ -203,11 +227,11 @@ def sendcommandtocomport(command):
             ComPort.timeout = 1
             ComPort.write_timeout=0
             testresult = ComPort.readline()
-            Log("Recieved:'" + str(testresult) + "'")
+            Log(" Received:'" + str(testresult) + "'")
             print("Success!")
             canvas.draw()
         except Exception as e:
-            polling = "False"
+            pollingFalse()
             Log("Err sending test msg to " + comportname + " Error was:" + str(e))
             messagebox.showinfo("Err sending msg to " + comportname, "Error was:" + str(e))
 
@@ -217,64 +241,45 @@ def sendcommandtocomport(command):
         labelcomport.config(text=comportname)
         if not (ComPort.isOpen()):
             messagebox.showinfo("Could not open " + comportname)
-            polling = "False"
+            pollingFalse()
             ComPort.close()
             return "Error"
-    ComPort.flushInput()  # flush input buffer, discarding all its contents
-    ComPort.flushOutput()  # flush output buffer, aborting current output
+    #ComPort.flushInput()  # flush input buffer, discarding all its contents
+    #ComPort.flushOutput()  # flush output buffer, aborting current output
     retry = 0
     ComPort.timeout = 5
     result = ""
     labelcomport.config(bg="darkblue")
     canvas.draw()
     while retry <= 1:
-        Log("Write:'" + str(command) + "'")
+        Log("WriteToCom:'" + str(command) + "'")
         try:
             ComPort.write(command.encode())
         except Exception as e:
-            polling = "False"
-            Log("Err sending data to comport. Error was:" + str(e))
+            Log(" Err sending data to comport. Error was:" + str(e))
+            pollingFalse()
             messagebox.showerror("Err sending data to comport", "Error was:" + str(e))
             return "Error"
         commandtrim = command.replace("+", "").replace(" ","")
-        #print("Call read line")
         result = ComPort.readline()
-        Log("Received:" + str(result))
-        #time.sleep(.5)  # give the serial port sometime to receive the data
-        #result = ""
-        # bwaitmore = 0
-        # char = 0
-        # while ComPort.in_waiting > 1000 or bwaitmore > 1000:
-        #     time.sleep(.1)  # give the serial port sometime to receive the data
-        #     char = char + 1
-        #     b = ComPort.read(1)
-        #     print (str(b))
-        #     if b > b'\0' and b != b'\r' and b != b'\n':
-        #         result = result + b.decode("utf-8")
-        #     if char < 3 and ComPort.in_waiting < 1:
-        #         time.sleep(.5)
-        #         print ("waitmore " + str(bwaitmore))
-        #         bwaitmore = bwaitmore + 1
-        #     if ComPort.in_waiting < 1:
-        #         bwaitmore = 10
-
+        Log(" ReadFromCom:" + str(result))
         resultstr = result.decode("utf-8").rstrip("\r\n")
-        #print ("AB_result:" + str(result))
-        #print("A_result: " + resultstr)
-        if not (resultstr.startswith(commandtrim)):
-            print("Mismatch cmd in return. Looking for cmd '" + str(commandtrim) + "' Retry #:" + str(retry))
-            print("Command was:'" + command + "'")
-            print("Result was:'" + resultstr + "'")
-            time.sleep(.1)
-            ComPort.flushInput()  # flush input buffer, discarding all its contents
-            ComPort.flushOutput()  # flush output buffer, aborting current output
+        Log(" Decoded :" + str(resultstr))
 
-            retry = retry + 1
+        if not (resultstr.startswith(commandtrim)):
+            log(" Cmd not found at start of return. Looking for cmd '" + str(commandtrim) + "' Retry #:" + str(retry))
+            if retry == 0:
+                log("   Retry/Sleep 1 second")
+                time.sleep(1)
+                retry = retry + 1
+            else:
+                log("   change result to 'Error'")
+                resultstr = "Error"
         else:
             resultstr = resultstr.replace(commandtrim, '', 1)
             retry = 100
-        labelcomport.config(bg="white")
-        canvas.draw()
+    labelcomport.config(bg="white")
+    canvas.draw()
     return resultstr
 
 def procescommandresult(command,result):
@@ -294,7 +299,7 @@ def procescommandresult(command,result):
     #print (result)
     if commandtrim == GET_REALTIME:
         if result == "testing":
-            print ("creating dummy data")
+            #print ("creating dummy data")
             result = "Running:index:Time:Avg:T1:T2:5:6:7:8:9:9:9"
             #state,endsetpoint,Roastinutes,tbeanrolling,mean,tbean1,tbean2,cfan,cheat1,cheat2
             parts = str(result).split(":")
@@ -507,9 +512,9 @@ class ButtonClickAction(object):
             timer.start(labeltimer)
             Poll_button.label.set_text("DisCon")
         else:
-            print ("turning off polling")
+            #print ("turning off polling")
             global polling
-            polling = 'False'
+            pollingFalse()
         canvas.draw()
         return
     def start(self, event):
@@ -653,9 +658,9 @@ class ButtonClickAction(object):
         print(line)
         with open("roasthistory.csv", "a") as myfile:
             myfile.write(line + '\n')
-
-
-
+    def CloseCom (self, event):
+        self.ind += 1
+        messagebox.showinfo("Closing comport", closecomport())
 print ("Logfilename:" + LogFileName)
 Log("   ")
 Log("*******************************STARTUP******************************************")
@@ -793,6 +798,9 @@ testcommand_button = Button(fig.add_axes([hboffset + (hbwidth * 11), 1-hbheight,
 testcommand_button.on_clicked(callback.AnyCmd)
 Save_button = Button(fig.add_axes([hboffset + (hbwidth * 12), 1-hbheight, hbwidthT, hbheight]), 'Save')
 Save_button.on_clicked(callback.Save)
+CloseComport_button = Button(fig.add_axes([hboffset + (hbwidth * 13), 1-hbheight, hbwidthT, hbheight]), 'CCom')
+CloseComport_button.on_clicked(callback.CloseCom)
+
 
 
 
