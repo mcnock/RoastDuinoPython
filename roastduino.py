@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('TkAgg')
 
-from apscheduler.schedulers.background import BackgroundScheduler
+#from apscheduler.schedulers.background import BackgroundScheduler
 import matplotlib.pyplot as plt
 import serial
 from serial.tools.list_ports_windows import comports
@@ -30,7 +30,7 @@ ACTION_CLEAR_IS = "+AC "
 ACTION_REFRESH = "+AR "
 ACTION_TOGGLE_ROAST = "+AT "
 
-testmode = "True"
+testmode = "False"
 logconsole = "True"
 #testmode = "True"
 #These are partial commands...an integer needs to be appended to the end
@@ -254,6 +254,8 @@ def sendcommandtocomport(command):
     while retry <= 1:
         Log("WriteToCom:'" + str(command) + "'")
         try:
+            ComPort.flushInput()  # flush input buffer, discarding all its contents
+            ComPort.flushOutput()  # flush output buffer, aborting current output
             ComPort.write(command.encode())
         except Exception as e:
             Log(" Err sending data to comport. Error was:" + str(e))
@@ -261,19 +263,20 @@ def sendcommandtocomport(command):
             messagebox.showerror("Err sending data to comport", "Error was:" + str(e))
             return "Error"
         commandtrim = command.replace("+", "").replace(" ","")
+        result = ""
         result = ComPort.readline()
         Log(" ReadFromCom:" + str(result))
         resultstr = result.decode("utf-8").rstrip("\r\n")
         Log(" Decoded :" + str(resultstr))
 
         if not (resultstr.startswith(commandtrim)):
-            log(" Cmd not found at start of return. Looking for cmd '" + str(commandtrim) + "' Retry #:" + str(retry))
+            Log(" Cmd not found at start of return. Looking for cmd '" + str(commandtrim) + "' Retry #:" + str(retry))
             if retry == 0:
-                log("   Retry/Sleep 1 second")
+                Log("   Retry/Sleep 1 second")
                 time.sleep(1)
                 retry = retry + 1
             else:
-                log("   change result to 'Error'")
+                Log("   change result to 'Error'")
                 resultstr = "Error"
         else:
             resultstr = resultstr.replace(commandtrim, '', 1)
@@ -291,7 +294,7 @@ def procescommandresult(command,result):
     #print (str(command))
     Log("Processing result:" + str(result))
     if result == "Error":
-        log("Error result")
+        Log("Error result")
         return ""
     commandtrim = command
     #print ("Processcommandresult")
@@ -323,7 +326,7 @@ def procescommandresult(command,result):
         else:
             parts = str(result).split(":")
         if len(parts) < 12:
-            log("Incomplete " + GET_REALTIME + " Should be 12. Was:" + str(len(parts)))
+            Log("Incomplete " + GET_REALTIME + " Should be 12. Was:" + str(len(parts)))
             return "Error"
         endsetpoint = int(parts[1])
         if str(parts[1]) == str(5):
@@ -376,7 +379,7 @@ def procescommandresult(command,result):
         profile = result.split("!")
         if len(profile) != 6:
 
-            log("Incomplete " + GET_PROFILE + " Should be 6.  Was:" + str(len(profile)))
+            Log("Incomplete " + GET_PROFILE + " Should be 6.  Was:" + str(len(profile)))
 
             return "Error"
         #lineprofile.remove()
@@ -457,8 +460,6 @@ def procescommandresult(command,result):
                     xy = activerun[i].split(":")
                     ytempA.append(float(xy[1]))
                     xtempA.append(float(xy[0]))
-                    linetempA.set_xdata(xtempA)
-                    linetempA.set_ydata(ytempA)
                 else:
                     print("skipping active run value  .. missing a :")
             fig.canvas.draw()
