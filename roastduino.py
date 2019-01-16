@@ -1,14 +1,8 @@
 import matplotlib
 matplotlib.use('TkAgg')
-<<<<<<< HEAD
-from winreg import *
-=======
 
-#from apscheduler.schedulers.background import BackgroundScheduler
-<<<<<<< HEAD
->>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
-=======
->>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
+from winreg import *
+
 import matplotlib.pyplot as plt
 import serial
 from serial.tools.list_ports_windows import comports
@@ -37,15 +31,8 @@ ACTION_CLEAR_IS = "+AC "
 ACTION_REFRESH = "+AR "
 ACTION_TOGGLE_ROAST = "+AT "
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-testmode = "xTrue"
-=======
+
 testmode = "False"
->>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
-=======
-testmode = "False"
->>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
 logconsole = "True"
 #testmode = "True"
 #These are partial commands...an integer needs to be appended to the end
@@ -348,15 +335,7 @@ def procescommandresult(command,result):
     global testingstate
     #print (str(command))
     if result == "Error":
-<<<<<<< HEAD
-<<<<<<< HEAD
         Log("Skipping Processing Command Result:'Error'")
-=======
-        Log("Error result")
->>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
-=======
-        Log("Error result")
->>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
         return ""
     Log("Processing Command Result:'" + str(result) +"'")
     commandtrim = command
