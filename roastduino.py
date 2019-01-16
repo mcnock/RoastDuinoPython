@@ -223,6 +223,8 @@ def sendcommandtocomport(command):
             ComPort.write_timeout = 1
             Log("Write known bad command:'test'" )
             testcommand = "test"
+            ComPort.flushInput()  # flush input buffer, discarding all its contents
+            ComPort.flushOutput()  # flush output buffer, aborting current output
             ComPort.write(testcommand.encode())
             ComPort.timeout = 1
             ComPort.write_timeout=0
@@ -438,6 +440,9 @@ def procescommandresult(command,result):
             #activerun = "0.00:58!0.50:100!1.00:150!2.00:305!4.00:400!5.00:420".split("!")
             activerun = "".split("!")
             currenttemptime = 0
+        if result == "":
+            Log("No " + GET_ACTIVERUN + " data to plot")
+            return "OK"
         else:
             activerun = result.split("!")
         yduty.clear()
