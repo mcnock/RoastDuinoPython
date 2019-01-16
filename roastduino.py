@@ -1,7 +1,14 @@
 import matplotlib
 matplotlib.use('TkAgg')
+<<<<<<< HEAD
+from winreg import *
+=======
 
-from apscheduler.schedulers.background import BackgroundScheduler
+#from apscheduler.schedulers.background import BackgroundScheduler
+<<<<<<< HEAD
+>>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
+=======
+>>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
 import matplotlib.pyplot as plt
 import serial
 from serial.tools.list_ports_windows import comports
@@ -30,7 +37,15 @@ ACTION_CLEAR_IS = "+AC "
 ACTION_REFRESH = "+AR "
 ACTION_TOGGLE_ROAST = "+AT "
 
-testmode = "True"
+<<<<<<< HEAD
+<<<<<<< HEAD
+testmode = "xTrue"
+=======
+testmode = "False"
+>>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
+=======
+testmode = "False"
+>>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
 logconsole = "True"
 #testmode = "True"
 #These are partial commands...an integer needs to be appended to the end
@@ -52,6 +67,54 @@ LastRunningTemp = 100
 LastRunningMinutes = 12.1
 
 currenttemptime = 0
+
+def FindHC05BlueToothPort():
+    logme = "False"
+    kHKLM = ConnectRegistry(None, HKEY_LOCAL_MACHINE)
+    kBTPORTDevices = OpenKey(kHKLM, r"SYSTEM\ControlSet001\Services\BTHPORT\Parameters\Devices")
+    r = QueryInfoKey(kBTPORTDevices)
+    #print("  " + r"SYSTEM\ControlSet001\Services\BTHPORT\Parameters\Devices")
+    for i in range(0,(r[0] )):
+        devicename = EnumKey(kBTPORTDevices, i)
+        if logme == "True": print ("    " + devicename)
+        kDevice = OpenKey(kBTPORTDevices, devicename)
+        r2 = QueryInfoKey(kDevice)
+        for i2 in range(0,(r2[0] )):
+            deviceSubKeyName = EnumKey(kDevice, i2)
+            if str(deviceSubKeyName).startswith("ServicesFor"):
+                if logme == "True": print ("      " + deviceSubKeyName)
+                kdeviceSub = OpenKey(kDevice, deviceSubKeyName)
+                guid = EnumKey(kdeviceSub, 0)
+                aKey4 = OpenKey(kdeviceSub,guid)
+                keyname5 = EnumKey(aKey4, 0)
+                if logme == "True": print ("             " + keyname5)
+                aKey5 = OpenKey(aKey4, keyname5)
+                val = QueryValueEx(aKey5,"PriLangServiceName")
+                valstr = val[0].decode("utf-8")
+                if (valstr.startswith("Dev B")):
+                    if logme == "True": print("            PrimLangServiceName:" + valstr)
+                    strNextKye = str(guid) + "_LOCALMFG"
+                    if logme == "True": print ("              " + strNextKye)
+                    kBTHENUM = OpenKey(kHKLM, r"SYSTEM\\ControlSet001\\Enum\\BTHENUM")
+                    if logme == "True": print ("")
+                    if logme == "True": print("  " + r"SYSTEM\\ControlSet001\\Enum\\BTHENUM")
+
+                    r3 = QueryInfoKey(kBTHENUM)
+                    for i3 in range(0, (r3[0] )):
+                        key6name = EnumKey(kBTHENUM, i3)
+                        if str(key6name).startswith(strNextKye):
+                            kKey6 = OpenKey(kBTHENUM, key6name)
+                            key7name = EnumKey(kKey6, 0)
+                            if str(key7name).upper().find(str(devicename).upper())>0:
+                                if logme == "True": print("    " +  str(key7name))
+                                aKey7 = OpenKey(kKey6, key7name)
+                                key8name = EnumKey(aKey7, 0)
+                                if logme == "True": print ("      "  + key8name)
+                                kKey8 = OpenKey(aKey7, key8name)
+                                val3 = QueryValueEx(kKey8, "PortName")
+                                if logme == "True": print ("         " + str(val3[0]))
+                                Log("HC05 Dev B comport found in registry:" + str(val3[0]))
+                                return(str(val3[0]))
 
 def maxminutes():
     return float(setpoints[5][1])
@@ -81,8 +144,6 @@ def Log(line):
         if (logconsole == "True"):
             print(ts + " " + str(line))
         myfile.write(ts + " " + str(line) + '\n')
-
-
 
 def PlaceSetPointAnnotation():
     annotateendpoint.set_x(float(setpoints[endsetpoint][1]) - .5)
@@ -192,22 +253,16 @@ def sendcommandtocomport(command):
         return "testing"
     if not ComPort.isOpen():
         try:
-            #iterator = sorted(comports())
-            ##portcsv = ""
-            #for n, (port, name, desc) in enumerate(iterator, 1):
-            #    # parse the USB serial port's description string
-            #    if str(name).find("Bluetooth") > 0:
-            #        portcsv = portcsv + " " + port
-            #if portcsv == "":
-            #    messagebox.showinfo("Err opening comport ", "No comports found")
-            #    polling = "False"
-            #    return "Error"
-            portcsv = "COM5"
-            comportname = simpledialog.askstring("Enter Comport from list", portcsv, parent=application_window)
+            comportname = FindHC05BlueToothPort()
             if comportname == "":
                 messagebox.showinfo(" Err opening comport ", "No comport entered")
                 pollingFalse()
                 return "Error"
+                comportname = simpledialog.askstring("Enter a Comport", portcsv, parent=application_window)
+                if comportname == "":
+                    messagebox.showinfo(" Err opening comport ", "No comport entered")
+                    pollingFalse()
+                    return "Error"
             Log("opening  port " + comportname)
             ComPort = serial.Serial(comportname)  # open COM24
             ComPort.baudrate = 9600  # set Baud rate to 9600
@@ -254,6 +309,8 @@ def sendcommandtocomport(command):
     while retry <= 1:
         Log("WriteToCom:'" + str(command) + "'")
         try:
+            ComPort.flushInput()  # flush input buffer, discarding all its contents
+            ComPort.flushOutput()  # flush output buffer, aborting current output
             ComPort.write(command.encode())
         except Exception as e:
             Log(" Err sending data to comport. Error was:" + str(e))
@@ -261,19 +318,20 @@ def sendcommandtocomport(command):
             messagebox.showerror("Err sending data to comport", "Error was:" + str(e))
             return "Error"
         commandtrim = command.replace("+", "").replace(" ","")
+        result = ""
         result = ComPort.readline()
         Log(" ReadFromCom:" + str(result))
         resultstr = result.decode("utf-8").rstrip("\r\n")
         Log(" Decoded :" + str(resultstr))
 
         if not (resultstr.startswith(commandtrim)):
-            log(" Cmd not found at start of return. Looking for cmd '" + str(commandtrim) + "' Retry #:" + str(retry))
+            Log(" Cmd not found at start of return. Looking for cmd '" + str(commandtrim) + "' Retry #:" + str(retry))
             if retry == 0:
-                log("   Retry/Sleep 1 second")
+                Log("   Retry/Sleep 1 second")
                 time.sleep(1)
                 retry = retry + 1
             else:
-                log("   change result to 'Error'")
+                Log("   change result to 'Error'")
                 resultstr = "Error"
         else:
             resultstr = resultstr.replace(commandtrim, '', 1)
@@ -289,10 +347,18 @@ def procescommandresult(command,result):
     global setpoints
     global testingstate
     #print (str(command))
-    Log("Processing result:" + str(result))
     if result == "Error":
-        log("Error result")
+<<<<<<< HEAD
+<<<<<<< HEAD
+        Log("Skipping Processing Command Result:'Error'")
+=======
+        Log("Error result")
+>>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
+=======
+        Log("Error result")
+>>>>>>> d7d2b68d4d5162a2fe5bb799ab04f0b2964876b4
         return ""
+    Log("Processing Command Result:'" + str(result) +"'")
     commandtrim = command
     #print ("Processcommandresult")
     #print (command)
@@ -323,7 +389,7 @@ def procescommandresult(command,result):
         else:
             parts = str(result).split(":")
         if len(parts) < 12:
-            log("Incomplete " + GET_REALTIME + " Should be 12. Was:" + str(len(parts)))
+            Log("Incomplete " + GET_REALTIME + " Should be 12. Was:" + str(len(parts)))
             return "Error"
         endsetpoint = int(parts[1])
         if str(parts[1]) == str(5):
@@ -376,7 +442,7 @@ def procescommandresult(command,result):
         profile = result.split("!")
         if len(profile) != 6:
 
-            log("Incomplete " + GET_PROFILE + " Should be 6.  Was:" + str(len(profile)))
+            Log("Incomplete " + GET_PROFILE + " Should be 6.  Was:" + str(len(profile)))
 
             return "Error"
         #lineprofile.remove()
@@ -457,8 +523,6 @@ def procescommandresult(command,result):
                     xy = activerun[i].split(":")
                     ytempA.append(float(xy[1]))
                     xtempA.append(float(xy[0]))
-                    linetempA.set_xdata(xtempA)
-                    linetempA.set_ydata(ytempA)
                 else:
                     print("skipping active run value  .. missing a :")
             fig.canvas.draw()
