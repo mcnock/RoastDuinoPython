@@ -1,7 +1,8 @@
 import matplotlib
 matplotlib.use('TkAgg')
 
-#from apscheduler.schedulers.background import BackgroundScheduler
+from winreg import *
+
 import matplotlib.pyplot as plt
 import serial
 from serial.tools.list_ports_windows import comports
@@ -30,6 +31,7 @@ ACTION_CLEAR_IS = "+AC "
 ACTION_REFRESH = "+AR "
 ACTION_TOGGLE_ROAST = "+AT "
 
+
 testmode = "False"
 logconsole = "True"
 #testmode = "True"
@@ -52,6 +54,54 @@ LastRunningTemp = 100
 LastRunningMinutes = 12.1
 
 currenttemptime = 0
+
+def FindHC05BlueToothPort():
+    logme = "False"
+    kHKLM = ConnectRegistry(None, HKEY_LOCAL_MACHINE)
+    kBTPORTDevices = OpenKey(kHKLM, r"SYSTEM\ControlSet001\Services\BTHPORT\Parameters\Devices")
+    r = QueryInfoKey(kBTPORTDevices)
+    #print("  " + r"SYSTEM\ControlSet001\Services\BTHPORT\Parameters\Devices")
+    for i in range(0,(r[0] )):
+        devicename = EnumKey(kBTPORTDevices, i)
+        if logme == "True": print ("    " + devicename)
+        kDevice = OpenKey(kBTPORTDevices, devicename)
+        r2 = QueryInfoKey(kDevice)
+        for i2 in range(0,(r2[0] )):
+            deviceSubKeyName = EnumKey(kDevice, i2)
+            if str(deviceSubKeyName).startswith("ServicesFor"):
+                if logme == "True": print ("      " + deviceSubKeyName)
+                kdeviceSub = OpenKey(kDevice, deviceSubKeyName)
+                guid = EnumKey(kdeviceSub, 0)
+                aKey4 = OpenKey(kdeviceSub,guid)
+                keyname5 = EnumKey(aKey4, 0)
+                if logme == "True": print ("             " + keyname5)
+                aKey5 = OpenKey(aKey4, keyname5)
+                val = QueryValueEx(aKey5,"PriLangServiceName")
+                valstr = val[0].decode("utf-8")
+                if (valstr.startswith("Dev B")):
+                    if logme == "True": print("            PrimLangServiceName:" + valstr)
+                    strNextKye = str(guid) + "_LOCALMFG"
+                    if logme == "True": print ("              " + strNextKye)
+                    kBTHENUM = OpenKey(kHKLM, r"SYSTEM\\ControlSet001\\Enum\\BTHENUM")
+                    if logme == "True": print ("")
+                    if logme == "True": print("  " + r"SYSTEM\\ControlSet001\\Enum\\BTHENUM")
+
+                    r3 = QueryInfoKey(kBTHENUM)
+                    for i3 in range(0, (r3[0] )):
+                        key6name = EnumKey(kBTHENUM, i3)
+                        if str(key6name).startswith(strNextKye):
+                            kKey6 = OpenKey(kBTHENUM, key6name)
+                            key7name = EnumKey(kKey6, 0)
+                            if str(key7name).upper().find(str(devicename).upper())>0:
+                                if logme == "True": print("    " +  str(key7name))
+                                aKey7 = OpenKey(kKey6, key7name)
+                                key8name = EnumKey(aKey7, 0)
+                                if logme == "True": print ("      "  + key8name)
+                                kKey8 = OpenKey(aKey7, key8name)
+                                val3 = QueryValueEx(kKey8, "PortName")
+                                if logme == "True": print ("         " + str(val3[0]))
+                                Log("HC05 Dev B comport found in registry:" + str(val3[0]))
+                                return(str(val3[0]))
 
 def maxminutes():
     return float(setpoints[5][1])
@@ -81,8 +131,6 @@ def Log(line):
         if (logconsole == "True"):
             print(ts + " " + str(line))
         myfile.write(ts + " " + str(line) + '\n')
-
-
 
 def PlaceSetPointAnnotation():
     annotateendpoint.set_x(float(setpoints[endsetpoint][1]) - .5)
@@ -192,22 +240,16 @@ def sendcommandtocomport(command):
         return "testing"
     if not ComPort.isOpen():
         try:
-            #iterator = sorted(comports())
-            ##portcsv = ""
-            #for n, (port, name, desc) in enumerate(iterator, 1):
-            #    # parse the USB serial port's description string
-            #    if str(name).find("Bluetooth") > 0:
-            #        portcsv = portcsv + " " + port
-            #if portcsv == "":
-            #    messagebox.showinfo("Err opening comport ", "No comports found")
-            #    polling = "False"
-            #    return "Error"
-            portcsv = "COM5"
-            comportname = simpledialog.askstring("Enter Comport from list", portcsv, parent=application_window)
+            comportname = FindHC05BlueToothPort()
             if comportname == "":
                 messagebox.showinfo(" Err opening comport ", "No comport entered")
                 pollingFalse()
                 return "Error"
+                comportname = simpledialog.askstring("Enter a Comport", portcsv, parent=application_window)
+                if comportname == "":
+                    messagebox.showinfo(" Err opening comport ", "No comport entered")
+                    pollingFalse()
+                    return "Error"
             Log("opening  port " + comportname)
             ComPort = serial.Serial(comportname)  # open COM24
             ComPort.baudrate = 9600  # set Baud rate to 9600
@@ -294,10 +336,10 @@ def procescommandresult(command,result):
     global setpoints
     global testingstate
     #print (str(command))
-    Log("Processing result:" + str(result))
     if result == "Error":
-        Log("Error result")
+        Log("Skipping Processing Command Result:'Error'")
         return ""
+    Log("Processing Command Result:'" + str(result) +"'")
     commandtrim = command
     #print ("Processcommandresult")
     #print (command)
